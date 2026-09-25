@@ -76,16 +76,6 @@
     max-width: 34ch;
   }
 
-  .tap-hint {
-    position: fixed;
-    bottom: 20px;
-    font-size: 0.8rem;
-    color: #ffffff77;
-    letter-spacing: 0.05em;
-    pointer-events: none;
-    z-index: 10;
-  }
-
   /* ---- Cake ---- */
   .cake-wrap{ position:relative; width:220px; height:300px; margin-bottom: 18px; }
   .countdown{
@@ -165,7 +155,7 @@
   }
   button:active{ transform: scale(.96); }
 
-  .mic-status{ margin-top:18px; font-size:.9rem; color:#c9b8dc; min-height:1.4em; }
+  .mic-status{ margin-top:18px; font-size:.95rem; color:#f0dcf8; min-height:1.4em; font-weight:500; }
 
   /* ---- Letter booklet ---- */
   .booklet{ width:190px; margin:0 auto; perspective:1400px; position:relative; }
@@ -208,15 +198,12 @@
   #yesBtn{ position:absolute; left:50%; top:20px; transform:translateX(-50%); }
   #noBtn{ position:absolute; left:50%; top:90px; transform:translateX(-50%); background:#ffffff22; color:var(--cream); box-shadow:none; }
 
-  .reveal{
-    font-family:'Fraunces', serif; font-style:italic; font-size:1.4rem; color:var(--gold);
-  }
+  .reveal{ font-family:'Fraunces', serif; font-style:italic; font-size:1.4rem; color:var(--gold); }
   .details{ margin-top:14px; color:#e8dcf2; line-height:1.9; font-size: 1.05rem; }
 </style>
 </head>
 <body>
 <div class="stars"></div>
-<div class="tap-hint">tap anywhere to continue ✦</div>
 <div class="stage">
 
   <!-- Screen 1: Cake -->
@@ -245,7 +232,7 @@
         </div>
       </div>
     </div>
-    <button id="micBtn" style="display:none;">Blow your candle pretty!! 🎤</button>
+    <button id="micBtn" style="display:none;">Enable Microphone 🎤</button>
     <div class="mic-status" id="micStatus"></div>
   </section>
 
@@ -344,14 +331,16 @@ function nextScreen(){
   }
 }
 
-/* ---- Music Synthesizer ---- */
-let audioCtx;
+/* ---- Synthesizer Birthday Song ---- */
+let audioCtx = null;
 let isMusicPlaying = false;
 let tempoMultiplier = 0.85;
 
-function unlockAudio() {
-  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-  if(audioCtx.state === 'suspended') {
+function initAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
 }
@@ -361,7 +350,6 @@ function playNote(freq, startTime, duration, isBass = false) {
   
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-  
   const harmOsc = audioCtx.createOscillator();
   const harmGain = audioCtx.createGain();
 
@@ -392,7 +380,7 @@ function playNote(freq, startTime, duration, isBass = false) {
 
 function playLoopingBirthday(){
   if(isMusicPlaying) return;
-  unlockAudio();
+  initAudioContext();
   isMusicPlaying = true;
 
   const melody = [
@@ -430,7 +418,7 @@ function playLoopingBirthday(){
   sequence();
 }
 
-/* ---- Pure JS Confetti Cannon ---- */
+/* ---- Confetti Cannon ---- */
 function launchConfetti() {
   const canvas = document.createElement('canvas');
   canvas.style.position = 'fixed';
@@ -494,31 +482,25 @@ function launchConfetti() {
   animate();
 }
 
-/* ---- Global Tap Navigation ---- */
+/* ---- Screen Navigation (Cake Screen requires blowing candle) ---- */
 document.addEventListener('pointerdown', (e) => {
-  unlockAudio();
+  if (currentScreenIdx === 0) return; // Ignore taps on Cake screen so it doesn't accidentally trigger
 
-  if(e.target.closest('#noBtn') || e.target.closest('#yesBtn')) return;
+  if (e.target.closest('#noBtn') || e.target.closest('#yesBtn')) return;
 
   const currentId = screens[currentScreenIdx];
 
-  if(currentId === 'screen-cake'){
-    candleOut();
-  } else if(currentId === 'screen-letter'){
+  if (currentId === 'screen-letter') {
     const booklet = document.getElementById('booklet');
-    if(!booklet.classList.contains('open')){
+    if (!booklet.classList.contains('open')) {
       booklet.classList.add('open');
     } else {
       nextScreen();
     }
-  } else if(currentId === 'screen-ask'){
-    // Requires clicking Yes
-  } else {
-    nextScreen();
   }
 });
 
-/* ---- Cake animations ---- */
+/* ---- Cake animations & Blow Detection ---- */
 const cakeSub = document.getElementById('cakeSub');
 const countdownEl = document.getElementById('countdown');
 const candleGroup = document.getElementById('candleGroup');
@@ -526,6 +508,7 @@ const tierTop = document.getElementById('tierTop');
 const tierMid = document.getElementById('tierMid');
 const tierBottom = document.getElementById('tierBottom');
 const micBtn = document.getElementById('micBtn');
+const micStatus = document.getElementById('micStatus');
 
 function buildCake(){
   countdownEl.textContent = '';
@@ -533,7 +516,7 @@ function buildCake(){
   order.forEach((el,i)=> setTimeout(()=> el.classList.add('dropped'), i*500));
   setTimeout(()=>{ candleGroup.classList.add('show'); }, order.length*500 + 200);
   setTimeout(()=>{
-    cakeSub.textContent = 'Blow out the candle (or tap anywhere)';
+    cakeSub.textContent = 'Tap the button to enable mic & blow your candle!';
     micBtn.style.display = 'inline-block';
   }, order.length*500 + 1000);
 }
@@ -551,59 +534,91 @@ function runCountdown(){
 setTimeout(runCountdown, 400);
 
 let candleIsOut = false;
+
 function candleOut(){
   if(candleIsOut) return;
   candleIsOut = true;
+
   document.getElementById('flame1').classList.add('out');
   document.getElementById('flame2').classList.add('out');
   document.getElementById('smoke').classList.add('show');
-  document.getElementById('micStatus').textContent = "Yay! Make a wish ✨";
-  micBtn.style.display='none';
+  micStatus.textContent = "Yay! Happy Birthday, Make a wish! ✨";
+  micBtn.style.display = 'none';
 
-  // START BIRTHDAY MUSIC EXACTLY WHEN CANDLE BLOWS OUT
+  // PLAY MUSIC IMMEDIATELY WHEN BLOWN OUT
   playLoopingBirthday();
   launchConfetti();
 
-  // Allow her to listen to the music on the cake screen before moving to letter
-  setTimeout(()=> showScreen('screen-letter'), 2800);
+  // Stay on cake screen for 4 seconds to hear song & see confetti, then open letter
+  setTimeout(() => showScreen('screen-letter'), 4000);
 }
 
 micBtn.addEventListener('click', async (e)=>{
   e.stopPropagation();
-  unlockAudio();
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+  initAudioContext();
+
+  micBtn.style.display = 'none';
+  micStatus.textContent = "Allowing microphone...";
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: { 
+        echoCancellation: false, 
+        noiseSuppression: false, 
+        autoGainControl: false 
+      } 
+    });
+
+    micStatus.textContent = "Blow directly into your phone's microphone! 🌬️";
+
     const source = audioCtx.createMediaStreamSource(stream);
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
     source.connect(analyser);
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    micBtn.style.display='none';
-    document.getElementById('micStatus').textContent = "Listening... blow into your phone mic! 🌬️";
-    let sustain = 0;
-    function tick(){
+
+    const data = new Float32Array(analyser.fftSize);
+    let blowCount = 0;
+
+    function detectBlow(){
       if(candleIsOut) return;
-      analyser.getByteTimeDomainData(data);
-      let sum=0;
-      for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
-      const level = Math.sqrt(sum/data.length);
-      if(level > 0.14){ sustain++; } else { sustain = Math.max(0, sustain-1); }
-      if(sustain > 4){
-        stream.getTracks().forEach(t=>t.stop());
+
+      analyser.getFloatTimeDomainData(data);
+      let sum = 0;
+      for(let i = 0; i < data.length; i++){
+        sum += data[i] * data[i];
+      }
+      const rms = Math.sqrt(sum / data.length);
+
+      // Microphone blow creates strong wind amplitude (> 0.07)
+      if(rms > 0.07){
+        blowCount++;
+      } else {
+        blowCount = Math.max(0, blowCount - 1);
+      }
+
+      if(blowCount >= 3){
+        stream.getTracks().forEach(t => t.stop());
         candleOut();
         return;
       }
-      requestAnimationFrame(tick);
+
+      requestAnimationFrame(detectBlow);
     }
-    tick();
-  }catch(err){
-    candleOut();
+
+    detectBlow();
+
+  } catch(err) {
+    micStatus.textContent = "Mic access error. Tap the cake to blow out! 🎂";
+    document.querySelector('.cake-wrap').addEventListener('click', () => {
+      candleOut();
+    }, { once: true });
   }
 });
 
 /* ---- Dodging No button ---- */
 const noBtn = document.getElementById('noBtn');
 const qbox = document.querySelector('.qbox');
+
 function dodge(e){
   e.preventDefault();
   e.stopPropagation();
