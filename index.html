@@ -245,7 +245,7 @@
         </div>
       </div>
     </div>
-    <button id="micBtn" style="display:none;">Blow your candle pretty!!</button>
+    <button id="micBtn" style="display:none;">Blow your candle pretty!! 🎤</button>
     <div class="mic-status" id="micStatus"></div>
   </section>
 
@@ -316,8 +316,9 @@
     <h1 style="font-size:2.2rem;">It's a date 🥂</h1>
     <p class="reveal">Save the moment</p>
     <div class="details">
-    <div 09|26="" &amp;="" 4:00=""></div><br>
-     <div Goa,="" Camarines="" Sur=""></div><br>
+      📅 [Add date &amp; time]<br>
+      📍 [Add location]<br>
+      👗 [Add dress code / hint]
     </div>
     <p style="margin-top:30px; font-size:1.1rem; color:var(--gold);">Can't wait to celebrate with you ❤️</p>
   </section>
@@ -343,10 +344,17 @@ function nextScreen(){
   }
 }
 
-/* ---- Music Box & Piano Instrumental Happy Birthday Synth ---- */
+/* ---- Music Synthesizer ---- */
 let audioCtx;
 let isMusicPlaying = false;
-let tempoMultiplier = 1.0;
+let tempoMultiplier = 0.85;
+
+function unlockAudio() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
 
 function playNote(freq, startTime, duration, isBass = false) {
   if (!audioCtx || freq <= 0) return;
@@ -357,7 +365,7 @@ function playNote(freq, startTime, duration, isBass = false) {
   const harmOsc = audioCtx.createOscillator();
   const harmGain = audioCtx.createGain();
 
-  osc.type = isBass ? 'sine' : 'sine';
+  osc.type = 'sine';
   harmOsc.type = isBass ? 'triangle' : 'sine';
 
   osc.frequency.setValueAtTime(freq, startTime);
@@ -384,8 +392,7 @@ function playNote(freq, startTime, duration, isBass = false) {
 
 function playLoopingBirthday(){
   if(isMusicPlaying) return;
-  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-  if(audioCtx.state === 'suspended') audioCtx.resume();
+  unlockAudio();
   isMusicPlaying = true;
 
   const melody = [
@@ -489,7 +496,7 @@ function launchConfetti() {
 
 /* ---- Global Tap Navigation ---- */
 document.addEventListener('pointerdown', (e) => {
-  playLoopingBirthday();
+  unlockAudio();
 
   if(e.target.closest('#noBtn') || e.target.closest('#yesBtn')) return;
 
@@ -528,7 +535,6 @@ function buildCake(){
   setTimeout(()=>{
     cakeSub.textContent = 'Blow out the candle (or tap anywhere)';
     micBtn.style.display = 'inline-block';
-    playLoopingBirthday();
   }, order.length*500 + 1000);
 }
 
@@ -554,14 +560,17 @@ function candleOut(){
   document.getElementById('micStatus').textContent = "Yay! Make a wish ✨";
   micBtn.style.display='none';
 
-  tempoMultiplier = 0.65;
+  // START BIRTHDAY MUSIC EXACTLY WHEN CANDLE BLOWS OUT
+  playLoopingBirthday();
   launchConfetti();
 
-  setTimeout(()=> showScreen('screen-letter'), 1800);
+  // Allow her to listen to the music on the cake screen before moving to letter
+  setTimeout(()=> showScreen('screen-letter'), 2800);
 }
 
 micBtn.addEventListener('click', async (e)=>{
   e.stopPropagation();
+  unlockAudio();
   try{
     const stream = await navigator.mediaDevices.getUserMedia({audio:true});
     const source = audioCtx.createMediaStreamSource(stream);
@@ -570,6 +579,7 @@ micBtn.addEventListener('click', async (e)=>{
     source.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
     micBtn.style.display='none';
+    document.getElementById('micStatus').textContent = "Listening... blow into your phone mic! 🌬️";
     let sustain = 0;
     function tick(){
       if(candleIsOut) return;
