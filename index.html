@@ -240,6 +240,7 @@
       </div>
     </div>
     <div class="mic-status" id="micStatus"></div>
+    <button id="nextSurpriseBtn" style="display:none; margin-top:18px;">Click for more surprise ✨</button>
   </section>
 
   <!-- Screen 2: Letter -->
@@ -513,6 +514,7 @@ const tierTop = document.getElementById('tierTop');
 const tierMid = document.getElementById('tierMid');
 const tierBottom = document.getElementById('tierBottom');
 const micStatus = document.getElementById('micStatus');
+const nextSurpriseBtn = document.getElementById('nextSurpriseBtn');
 
 function buildCake(){
   countdownEl.textContent = '';
@@ -551,9 +553,17 @@ function candleOut(){
   playLoopingBirthday();
   launchConfetti();
 
-  // Stay on cake screen for 4 seconds, then open letter
-  setTimeout(() => showScreen('screen-letter'), 4000);
+  // Show "Click for more surprise" button
+  setTimeout(() => {
+    nextSurpriseBtn.style.display = 'inline-block';
+  }, 1200);
 }
+
+// Button action to go to letter screen
+nextSurpriseBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  showScreen('screen-letter');
+});
 
 /* ---- Start Button Click Handler ---- */
 document.getElementById('startBtn').addEventListener('click', async () => {
