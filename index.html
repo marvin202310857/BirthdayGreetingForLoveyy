@@ -206,9 +206,16 @@
 <div class="stars"></div>
 <div class="stage">
 
+  <!-- Screen 0: Intro / Mic Request -->
+  <section class="screen active" id="screen-intro">
+    <h1>A Birthday Special<br>For You 💖</h1>
+    <p class="sub">Turn up your volume and get ready to blow out your candles!</p>
+    <button id="startBtn">Start Celebration ✨</button>
+  </section>
+
   <!-- Screen 1: Cake -->
-  <section class="screen active" id="screen-cake">
-    <h1>Happy Birthday,<br>love</h1>
+  <section class="screen" id="screen-cake">
+    <h1>Make A Wish,<br>love</h1>
     <p class="sub" id="cakeSub">Get ready…</p>
     <div class="cake-wrap">
       <div class="countdown" id="countdown"></div>
@@ -232,7 +239,6 @@
         </div>
       </div>
     </div>
-    <button id="micBtn" style="display:none;">Enable Microphone 🎤</button>
     <div class="mic-status" id="micStatus"></div>
   </section>
 
@@ -303,9 +309,8 @@
     <h1 style="font-size:2.2rem;">It's a date 🥂</h1>
     <p class="reveal">Save the moment</p>
     <div class="details">
-      📅 [Add date &amp; time]<br>
-      📍 [Add location]<br>
-      👗 [Add dress code / hint]
+      📅 Sept. 26, 2026<br>
+      👗 No dress code, wear your best
     </div>
     <p style="margin-top:30px; font-size:1.1rem; color:var(--gold);">Can't wait to celebrate with you ❤️</p>
   </section>
@@ -313,7 +318,7 @@
 </div>
 
 <script>
-const screens = ['screen-cake', 'screen-letter', 'screen-ask', 'screen-reveal'];
+const screens = ['screen-intro', 'screen-cake', 'screen-letter', 'screen-ask', 'screen-reveal'];
 let currentScreenIdx = 0;
 
 function showScreen(id){
@@ -482,9 +487,9 @@ function launchConfetti() {
   animate();
 }
 
-/* ---- Screen Navigation (Cake Screen requires blowing candle) ---- */
+/* ---- Screen Navigation ---- */
 document.addEventListener('pointerdown', (e) => {
-  if (currentScreenIdx === 0) return; // Ignore taps on Cake screen so it doesn't accidentally trigger
+  if (currentScreenIdx <= 1) return; // Prevent tapping on intro or cake screens
 
   if (e.target.closest('#noBtn') || e.target.closest('#yesBtn')) return;
 
@@ -507,7 +512,6 @@ const candleGroup = document.getElementById('candleGroup');
 const tierTop = document.getElementById('tierTop');
 const tierMid = document.getElementById('tierMid');
 const tierBottom = document.getElementById('tierBottom');
-const micBtn = document.getElementById('micBtn');
 const micStatus = document.getElementById('micStatus');
 
 function buildCake(){
@@ -516,8 +520,8 @@ function buildCake(){
   order.forEach((el,i)=> setTimeout(()=> el.classList.add('dropped'), i*500));
   setTimeout(()=>{ candleGroup.classList.add('show'); }, order.length*500 + 200);
   setTimeout(()=>{
-    cakeSub.textContent = 'Tap the button to enable mic & blow your candle!';
-    micBtn.style.display = 'inline-block';
+    cakeSub.textContent = 'Blow directly into your microphone!';
+    micStatus.textContent = 'Listening for your blow... 🌬️';
   }, order.length*500 + 1000);
 }
 
@@ -531,7 +535,6 @@ function runCountdown(){
     else{ clearInterval(iv); buildCake(); }
   }, 600);
 }
-setTimeout(runCountdown, 400);
 
 let candleIsOut = false;
 
@@ -542,23 +545,21 @@ function candleOut(){
   document.getElementById('flame1').classList.add('out');
   document.getElementById('flame2').classList.add('out');
   document.getElementById('smoke').classList.add('show');
-  micStatus.textContent = "Yay! Happy Birthday, Make a wish! ✨";
-  micBtn.style.display = 'none';
+  micStatus.textContent = "Yay! Happy Birthday! Make a wish! ✨";
 
   // PLAY MUSIC IMMEDIATELY WHEN BLOWN OUT
   playLoopingBirthday();
   launchConfetti();
 
-  // Stay on cake screen for 4 seconds to hear song & see confetti, then open letter
+  // Stay on cake screen for 4 seconds, then open letter
   setTimeout(() => showScreen('screen-letter'), 4000);
 }
 
-micBtn.addEventListener('click', async (e)=>{
-  e.stopPropagation();
+/* ---- Start Button Click Handler ---- */
+document.getElementById('startBtn').addEventListener('click', async () => {
   initAudioContext();
-
-  micBtn.style.display = 'none';
-  micStatus.textContent = "Allowing microphone...";
+  showScreen('screen-cake');
+  runCountdown();
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -568,8 +569,6 @@ micBtn.addEventListener('click', async (e)=>{
         autoGainControl: false 
       } 
     });
-
-    micStatus.textContent = "Blow directly into your phone's microphone! 🌬️";
 
     const source = audioCtx.createMediaStreamSource(stream);
     const analyser = audioCtx.createAnalyser();
@@ -589,7 +588,6 @@ micBtn.addEventListener('click', async (e)=>{
       }
       const rms = Math.sqrt(sum / data.length);
 
-      // Microphone blow creates strong wind amplitude (> 0.07)
       if(rms > 0.07){
         blowCount++;
       } else {
@@ -608,7 +606,7 @@ micBtn.addEventListener('click', async (e)=>{
     detectBlow();
 
   } catch(err) {
-    micStatus.textContent = "Mic access error. Tap the cake to blow out! 🎂";
+    micStatus.textContent = "Tap the cake to blow out candles! 🎂";
     document.querySelector('.cake-wrap').addEventListener('click', () => {
       candleOut();
     }, { once: true });
