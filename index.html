@@ -158,7 +158,7 @@
   .mic-status{ margin-top:18px; font-size:.95rem; color:#f0dcf8; min-height:1.4em; font-weight:500; }
 
   /* ---- Letter booklet ---- */
-  .booklet{ width:190px; margin:0 auto; perspective:1400px; position:relative; }
+  .booklet{ width:220px; margin:0 auto; perspective:1400px; position:relative; }
   .book-inside{
     position:relative; width:100%; aspect-ratio:3/4;
     border-radius:12px; overflow:hidden; padding:8px;
@@ -171,6 +171,7 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     padding:14px 10px; cursor:pointer; backface-visibility:hidden;
     transition: transform .85s cubic-bezier(.4,.15,.2,1);
+    z-index: 2;
   }
   .booklet.open .book-cover{ transform: rotateY(-155deg); pointer-events:none; }
   .card-title{
@@ -189,7 +190,8 @@
     background: repeating-linear-gradient(45deg,#eadbe0,#eadbe0 10px,#f3e8ec 10px,#f3e8ec 20px);
     display:flex; align-items:center; justify-content:center;
     color:#9c7c88; font-size:.75rem; padding:10px; text-align:center;
-    border: 2px dashed #c99aab; object-fit:cover;
+    border: 2px dashed #c99aab; object-fit:contain;
+    user-select: auto; -webkit-user-select: auto;
   }
 
   /* ---- Date question ---- */
@@ -263,7 +265,8 @@
       </div>
     </div>
     <h1 style="font-size:1.8rem;">A little something<br>I wrote you</h1>
-    <p class="sub" style="margin-bottom:20px;">Tap the card to read it.</p>
+    <p class="sub" id="letterSub" style="margin-bottom:16px;">Tap the card to open it.</p>
+    
     <div class="booklet" id="booklet">
       <div class="book-inside">
         <img class="letter-photo" id="letterImg" src="birthdaygrettings.jpg" alt="Your handwritten letter"
@@ -290,6 +293,9 @@
         <div class="book-hint">tap to open</div>
       </div>
     </div>
+
+    <!-- Dedicated button for advancing to avoid accidental page turns when zooming into the letter -->
+    <button id="toAskBtn" style="display:none; margin-top:20px;">Next Surprise ✨</button>
   </section>
 
   <!-- Screen 3: Yes/No question -->
@@ -328,12 +334,6 @@ function showScreen(id){
   if(target){
     target.classList.add('active');
     currentScreenIdx = screens.indexOf(id);
-  }
-}
-
-function nextScreen(){
-  if(currentScreenIdx < screens.length - 1){
-    showScreen(screens[currentScreenIdx + 1]);
   }
 }
 
@@ -424,29 +424,50 @@ function playLoopingBirthday(){
   sequence();
 }
 
-/* ---- Confetti Cannon ---- */
-function launchConfetti() {
-  const canvas = document.createElement('canvas');
-  canvas.style.position = 'fixed';
-  canvas.style.top = '0';
-  canvas.style.left = '0';
-  canvas.style.width = '100vw';
-  canvas.style.height = '100vh';
-  canvas.style.pointerEvents = 'none';
-  canvas.style.zIndex = '9999';
-  document.body.appendChild(canvas);
+/* ---- Continuous Confetti Loop ---- */
+let confettiActive = false;
+let confettiCanvas = null;
 
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+function startContinuousConfetti() {
+  if (confettiActive) return;
+  confettiActive = true;
+
+  confettiCanvas = document.createElement('canvas');
+  confettiCanvas.style.position = 'fixed';
+  confettiCanvas.style.top = '0';
+  confettiCanvas.style.left = '0';
+  confettiCanvas.style.width = '100vw';
+  confettiCanvas.style.height = '100vh';
+  confettiCanvas.style.pointerEvents = 'none';
+  confettiCanvas.style.zIndex = '9999';
+  document.body.appendChild(confettiCanvas);
+
+  const ctx = confettiCanvas.getContext('2d');
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
 
   const particles = [];
   const colors = ['#e8b75a', '#ffb347', '#d9647f', '#f7e2e8', '#ffffff', '#a855f7'];
 
-  for (let i = 0; i < 110; i++) {
+  function spawnParticle() {
     particles.push({
-      x: canvas.width / 2,
-      y: canvas.height * 0.55,
+      x: Math.random() * confettiCanvas.width,
+      y: -10,
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 3 + 2,
+      size: Math.random() * 7 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rSpeed: (Math.random() - 0.5) * 8,
+      opacity: 1
+    });
+  }
+
+  // Burst at start
+  for (let i = 0; i < 70; i++) {
+    particles.push({
+      x: confettiCanvas.width / 2,
+      y: confettiCanvas.height * 0.55,
       vx: (Math.random() - 0.5) * 14,
       vy: (Math.random() - 1.2) * 13,
       size: Math.random() * 8 + 4,
@@ -458,53 +479,50 @@ function launchConfetti() {
   }
 
   function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let active = false;
-    particles.forEach(p => {
+    if (!confettiActive) {
+      if (confettiCanvas) confettiCanvas.remove();
+      return;
+    }
+
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+    if (particles.length < 90 && Math.random() < 0.4) {
+      spawnParticle();
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.22;
+      p.vy += 0.05;
       p.rotation += p.rSpeed;
-      p.opacity -= 0.007;
 
-      if (p.opacity > 0) {
-        active = true;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.max(0, p.opacity);
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        ctx.restore();
+      if (p.y > confettiCanvas.height + 20) {
+        particles.splice(i, 1);
+        continue;
       }
-    });
 
-    if (active) {
-      requestAnimationFrame(animate);
-    } else {
-      canvas.remove();
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.opacity;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.restore();
     }
+
+    requestAnimationFrame(animate);
   }
   animate();
 }
 
-/* ---- Screen Navigation ---- */
-document.addEventListener('pointerdown', (e) => {
-  if (currentScreenIdx <= 1) return; // Prevent tapping on intro or cake screens
-
-  if (e.target.closest('#noBtn') || e.target.closest('#yesBtn')) return;
-
-  const currentId = screens[currentScreenIdx];
-
-  if (currentId === 'screen-letter') {
-    const booklet = document.getElementById('booklet');
-    if (!booklet.classList.contains('open')) {
-      booklet.classList.add('open');
-    } else {
-      nextScreen();
-    }
+function stopContinuousConfetti() {
+  confettiActive = false;
+  if (confettiCanvas) {
+    confettiCanvas.remove();
+    confettiCanvas = null;
   }
-});
+}
 
 /* ---- Cake animations & Blow Detection ---- */
 const cakeSub = document.getElementById('cakeSub');
@@ -549,19 +567,17 @@ function candleOut(){
   document.getElementById('smoke').classList.add('show');
   micStatus.textContent = "Yay! Happy Birthday! Make a wish! ✨";
 
-  // PLAY MUSIC IMMEDIATELY WHEN BLOWN OUT
   playLoopingBirthday();
-  launchConfetti();
+  startContinuousConfetti();
 
-  // Show "Click for more surprise" button
   setTimeout(() => {
     nextSurpriseBtn.style.display = 'inline-block';
   }, 1200);
 }
 
-// Button action to go to letter screen
 nextSurpriseBtn.addEventListener('click', (e) => {
   e.stopPropagation();
+  stopContinuousConfetti(); // Stops confetti when changing page
   showScreen('screen-letter');
 });
 
@@ -623,6 +639,24 @@ document.getElementById('startBtn').addEventListener('click', async () => {
   }
 });
 
+/* ---- Letter Page Explicit Controls ---- */
+const bookCover = document.getElementById('bookCover');
+const booklet = document.getElementById('booklet');
+const toAskBtn = document.getElementById('toAskBtn');
+const letterSub = document.getElementById('letterSub');
+
+bookCover.addEventListener('click', (e) => {
+  e.stopPropagation();
+  booklet.classList.add('open');
+  letterSub.textContent = 'Zoom in or pinch to read your letter!';
+  toAskBtn.style.display = 'inline-block';
+});
+
+toAskBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  showScreen('screen-ask');
+});
+
 /* ---- Dodging No button ---- */
 const noBtn = document.getElementById('noBtn');
 const qbox = document.querySelector('.qbox');
@@ -641,7 +675,8 @@ noBtn.addEventListener('pointerdown', dodge);
 
 document.getElementById('yesBtn').addEventListener('click', (e)=>{ 
   e.stopPropagation(); 
-  launchConfetti();
+  startContinuousConfetti();
+  setTimeout(() => stopContinuousConfetti(), 4000);
   showScreen('screen-reveal'); 
 });
 </script>
